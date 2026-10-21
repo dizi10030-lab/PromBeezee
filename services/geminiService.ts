@@ -1,21 +1,28 @@
 import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // Constants for image compression to avoid payload size limits
 const MAX_DIMENSION = 1024;
 const JPEG_QUALITY = 0.8;
 
 export const analyzeSafetyImage = async (
   imageFile: File,
-  userDescription: string
+  userDescription: string,
+  baseUrl?: string
 ): Promise<AnalysisResult> => {
   try {
     // Compress and convert file to base64
-    // This avoids "Rpc failed due to xhr error" (code 6) caused by large payloads
     const { base64, mimeType } = await compressImage(imageFile);
     
+    // Initialize AI client
+    const aiConfig: any = {
+      apiKey: process.env.API_KEY || (process.env as any).GEMINI_API_KEY,
+    };
+    if (baseUrl && baseUrl.trim() !== '') {
+      aiConfig.baseUrl = baseUrl.trim();
+    }
+    const ai = new GoogleGenAI(aiConfig);
+
     const systemInstruction = `
 Ты — эксперт высшей категории по промышленной безопасности и требованиям российского законодательства, в частности Федеральных норм и правил (ФНП) в области промышленной безопасности.
 Твоя задача — анализировать предоставленное изображение и описание на предмет нарушений.
@@ -39,26 +46,49 @@ export const analyzeSafetyImage = async (
 Проанализируй приложенное изображение на предмет нарушений ФНП.
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64,
-            },
+    // Helper for executing generateContent with retry
+    const executeWithRetry = async (retries = 3, delay = 1500): Promise<any> => {
+      try {
+        return await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64,
+                },
+              },
+              {
+                text: prompt,
+              },
+            ],
           },
-          {
-            text: prompt,
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.2, // Low temperature for more factual/analytical responses
           },
-        ],
-      },
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.2, // Low temperature for more factual/analytical responses
-      },
-    });
+        });
+      } catch (err: any) {
+        const errorStr = (err.message || "").toLowerCase() + (JSON.stringify(err) || "").toLowerCase();
+        const isTransient = 
+          errorStr.includes("503") || 
+          errorStr.includes("unavailable") || 
+          errorStr.includes("high demand") || 
+          errorStr.includes("spikes in demand") ||
+          errorStr.includes("rate limit") ||
+          errorStr.includes("429");
+          
+        if (retries > 0 && isTransient) {
+          console.warn(`Gemini API is busy. Retrying in ${delay}ms... (${retries} attempts left)`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return executeWithRetry(retries - 1, delay * 2);
+        }
+        throw err;
+      }
+    };
+
+    const response = await executeWithRetry();
 
     const text = response.text || "Не удалось получить ответ от модели.";
     
@@ -81,9 +111,19 @@ export const analyzeSafetyImage = async (
     console.error("Gemini Analysis Error:", error);
     
     let errorMessage = "Не удалось выполнить анализ.";
-    // Handle specific RPC/XHR errors commonly caused by size or network
-    if (error.message?.includes("500") || error.message?.includes("xhr error")) {
-        errorMessage = "Ошибка передачи данных. Возможно, файл слишком сложный для обработки или произошел сбой сети. Мы автоматически сжали изображение, но если ошибка повторяется, попробуйте другое фото.";
+    const errorStr = (error.message || "").toLowerCase() + (JSON.stringify(error) || "").toLowerCase();
+
+    // Handle specific Region/Location errors
+    if (errorStr.includes("location is not supported") || errorStr.includes("precondition") || errorStr.includes("400")) {
+        errorMessage = "REGION_BLOCKED"; // Specific code to trigger UI handling
+    } 
+    // Handle 503 / High demand spikes
+    else if (errorStr.includes("503") || errorStr.includes("unavailable") || errorStr.includes("high demand") || errorStr.includes("spikes in demand")) {
+        errorMessage = "Модель Gemini 3.5 Flash сейчас испытывает высокую нагрузку (503 Service Unavailable). Пожалуйста, повторите попытку через пару секунд.";
+    }
+    // Handle specific RPC/XHR errors
+    else if (errorStr.includes("500") || errorStr.includes("xhr error")) {
+        errorMessage = "Ошибка передачи данных. Возможно, сбой сети или файл слишком велик.";
     } else {
         errorMessage = error.message || "Произошла неизвестная ошибка при обращении к ИИ.";
     }
@@ -126,7 +166,6 @@ const compressImage = (file: File): Promise<{ base64: string; mimeType: string }
         
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-            // If canvas context fails, fallback to original (risky but better than crashing)
             const result = event.target?.result as string;
             const base64 = result.split(',')[1];
             resolve({ base64, mimeType: file.type });
@@ -135,10 +174,8 @@ const compressImage = (file: File): Promise<{ base64: string; mimeType: string }
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to JPEG with reduced quality
         const mimeType = 'image/jpeg';
         const dataUrl = canvas.toDataURL(mimeType, JPEG_QUALITY);
-        // Remove prefix "data:image/jpeg;base64,"
         const base64 = dataUrl.split(',')[1];
 
         resolve({ base64, mimeType });

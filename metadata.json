@@ -3,5 +3,8 @@
   "description": "An AI-powered assistant for Industrial Safety (FNP) compliance analysis based on visual data and Russian legislation.",
   "requestFramePermissions": [
     "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

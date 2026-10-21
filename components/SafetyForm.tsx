@@ -10,6 +10,7 @@ const SafetyForm: React.FC<SafetyFormProps> = ({ onAnalyze, isLoading }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [description, setDescription] = useState<string>('');
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -19,6 +20,33 @@ const SafetyForm: React.FC<SafetyFormProps> = ({ onAnalyze, isLoading }) => {
       setPreviewUrl(url);
     }
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isLoading) {
+      setIsDragging(true);
+    }
+  }, [isLoading]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isLoading) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        setSelectedFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
+    }
+  }, [isLoading]);
 
   const handleClearFile = () => {
     setSelectedFile(null);
@@ -46,7 +74,12 @@ const SafetyForm: React.FC<SafetyFormProps> = ({ onAnalyze, isLoading }) => {
           </label>
           
           {!previewUrl ? (
-            <div className="relative group">
+            <div 
+              className="relative group"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               <input
                 type="file"
                 accept="image/*"
@@ -54,11 +87,18 @@ const SafetyForm: React.FC<SafetyFormProps> = ({ onAnalyze, isLoading }) => {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 disabled={isLoading}
               />
-              <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 flex flex-col items-center justify-center bg-slate-50 transition-colors group-hover:bg-slate-100 group-hover:border-slate-400 text-center">
-                <div className="bg-white p-3 rounded-full shadow-sm mb-3">
-                  <Camera className="w-6 h-6 text-slate-500" />
+              <div className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center transition-all text-center
+                ${isDragging 
+                  ? 'border-orange-500 bg-orange-50/50 scale-[1.01]' 
+                  : 'border-slate-300 bg-slate-50 group-hover:bg-slate-100 group-hover:border-slate-400'
+                }`}
+              >
+                <div className={`p-3 rounded-full shadow-sm mb-3 transition-colors ${isDragging ? 'bg-orange-100 text-orange-600' : 'bg-white text-slate-500'}`}>
+                  <Camera className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-medium text-slate-900">Нажмите для загрузки фото</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {isDragging ? 'Отпустите фото для загрузки' : 'Нажмите или перетащите фото сюда'}
+                </p>
                 <p className="text-xs text-slate-500 mt-1">JPEG, PNG (Макс. 10MB)</p>
               </div>
             </div>

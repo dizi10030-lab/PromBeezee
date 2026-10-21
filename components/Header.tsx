@@ -16,7 +16,7 @@ const Header: React.FC = () => {
         </div>
         <div className="hidden sm:flex items-center gap-2 text-sm text-slate-400">
           <HardHat className="w-4 h-4" />
-          <span>Gemini 2.5 Flash Powered</span>
+          <span>Gemini 3.5 Flash Powered</span>
         </div>
       </div>
     </header>
