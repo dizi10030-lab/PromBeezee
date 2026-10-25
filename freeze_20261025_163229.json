@@ -1,0 +1,41 @@
+{
+  "frozen_at": "2026-10-25T16:32:29",
+  "script_version": "1.0",
+  "photos": 31,
+  "objects": 27,
+  "taxonomy_codes": [
+    "Т1",
+    "Т2",
+    "Т3",
+    "Т4",
+    "Т5",
+    "Т6",
+    "Т7",
+    "Т8",
+    "Т10",
+    "Т11",
+    "Т12",
+    "Т13",
+    "Т14",
+    "Т15",
+    "Т16",
+    "Т17",
+    "Т18",
+    "Т19"
+  ],
+  "reference_items": 57,
+  "photos_without_violations": 9,
+  "files": {
+    "Журнал_снимков.xlsx": "3e92e209e6bfa27a97faa5bfdfa3f2cab2ff7806aac340b3890368fa8a3f1f37",
+    "Эталонная_разметка.xlsx": "e111a8adc0eaa7a5e4cf359d9e42d3c44653c7ec0bfc7cefd1d06b21dc8da0d9",
+    "config.json": "d5abf179721aec6c4e3e8d3ffb05b017be7b0f303d5c520c4b33334a3bf2a7df",
+    "experiment.py": "d2c79a0ceec17de7e5f86b038d8c9ba284b5a57c67f63e46212900174b59699d",
+    "fnp_536.txt": "02b84c45b31130ddc5a199adacdfc7dcbbb5cba77deef2d0f2cae6af78d30320",
+    "fnp_444.txt": "98e94a85dcb9db04e4c497c79931e5baaff43f35125976112d200fd0406f569b",
+    "fnp_533.txt": "1e40973381d00d6c4f53c110d59ddab6fe893191ef9823fb9cec4e83c43a972b",
+    "gost_r_71918-2024.txt": "fd811f41623db416e4a21b66638bccfb25014aae47b980867da08f5d6880edc8",
+    "gost_32569-2013.txt": "75c1553d222a23e528cfc1ac044931a3636fbdcb70bb4afb5a11c77ee49d5c43",
+    "gost_12.2.063-2015.txt": "6bd6c7a9205bf7282b4e9bd2f047a7f1ccd3034e11aa4c95f49ab6ca897876fd"
+  },
+  "problems_ignored": []
+}
